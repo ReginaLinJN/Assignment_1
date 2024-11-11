@@ -1,0 +1,142 @@
+---
+title: "Assignment1_SOCS0100"
+author: NGQM2
+format: html
+---
+
+## Introduction
+
+This report aims to examine the WHO (2017) data on MCV vaccine coverage and measles cases, in order to analyse the trends of public health in by countries and make comparisons between developed and developing countries.
+
+It is crucial to consider statistics regarding both measles cases and MCV vaccine coverage when developing public health policies on a global scale. Furthermore, the examination of data on this disease is important for understanding the global distribution of vaccine inequality and the impact of measles, a highly contagious disease with severe health consequences, on global public health. Gaining insights on these aspects can very significant for social sciences research and informing public policies globally.
+
+## Data set Summary
+
+This data set includes yearly statistics in different countries and regions regarding vaccine coverage and disease burden on 5 different vaccines (BCG, HepB3, Pol3, DTP3 and MCV).
+
+## Data Wrangling
+
+1.  Statistics regarding measles and the MCV vaccine are selected to create a new data frame. Renaming the variables are helpful for future analysis in this report as it offers more concise and accessible indications.
+
+```{r}
+df <- data %>% select(Entity, Year, Measles..MCV..immunization.coverage.among.1.year.olds..WHO.2017., Number.of.confirmed.measles.cases..WHO.2017.) %>%
+  rename(coverage =  Measles..MCV..immunization.coverage.among.1.year.olds..WHO.2017., cases = Number.of.confirmed.measles.cases..WHO.2017.,
+         country = Entity)
+```
+
+2.  A binary variable is created to indicate the level of infection in countries with over 500 confirmed cases, categorising these countries as high infection (1) or low infection (0). This provides a comprehensive overview of the number of countries that continued to experience a significant burden of measles cases, underscoring the existence of potential inequality in vaccine access and coverage across the globe. It can be observed that the global coverage is approximately 77%, with a relatively low infection level (below 0.5), which may indicate the efficacy of the vaccine.
+
+```{r}
+df <- df %>% mutate(high_infection = ifelse(cases > 500, 1, 0))
+
+df %>%
+  select(-country, -Year) %>%  
+  map_dbl(mean, na.rm = TRUE)
+```
+
+3.  The data frame is reshaped into a wide format, indicating the extent of vaccine coverage and the number of confirmed cases in each year in a range of countries and regions. This allows for a more comprehensive understanding of the global progress of vaccination.
+
+```{r}
+df_1 <- df%>%
+  pivot_wider(
+    names_from = Year,
+    values_from = c(coverage, cases, high_infection)
+  )
+```
+
+## Data Processing and Visualisation
+
+1.  Top 10 Tables by Averages
+
+In order to gain a deeper understanding of the extent of vaccination coverage and the cases of measles in different countries, two tables have been created. The first presents the ten countries with the highest average vaccination coverage, while the second displays the ten countries with the highest number of confirmed cases. It is noteworthy that regions within the data set have been excluded in order to focus on countries. Additionally, a function is also created to simplified the process of generating tables.
+
+This section has been enhanced by ChatGPT, which initially failed to generate the tables immediately after running the codes. ChatGPT has recommended the inclusion of the print() function to address this issue. ChatGPT has also suggested to simplified the process by creating a table generation function, so that the initially code of generating two tables one by one was replaced by this new function.
+
+```{r}
+generate_top_10_table <- function(df, metric, top_n = 10, caption_text) {
+  df %>%
+    filter(!country %in% c("World", "Africa", "Western Pacific", "Europe", "South-East Asia", "Eastern Mediterranean")) %>%
+    group_by(country) %>%
+    summarise(
+      avg_coverage = mean(coverage, na.rm = TRUE),
+      avg_cases = mean(cases, na.rm = TRUE)
+    ) %>%
+    arrange(desc(.data[[metric]])) %>%
+    head(top_n) %>%
+    kable(caption = caption_text) %>%
+    kable_styling("striped") %>%
+    kable_classic(full_width = FALSE)
+}
+
+top_10_coverage <- print(generate_top_10_table(df, "avg_coverage", 10, "Top 10 countries by average vaccine coverage"))
+top_10_cases <- print(generate_top_10_table(df, "avg_cases", 10, "Top 10 countries by average confirmed cases"))
+```
+
+2.  Bar Plot Showing Infection Level
+
+Understading the difference in infection level in different countries is important in addressing the issue of global health inequality. Hence, a bar chart is created to illustrate the number of countries with high infection level and low infection level.
+
+This section has also been refined by ChatGPT, with a cleaner and shorter code, scale_x_discrete, for the creation of the plot.
+
+It could be seen that although there are more countries with lower infection level, the inequality on health is not significant.
+
+```{r}
+ggplot(df, aes(x = factor(high_infection), fill = factor(high_infection))) +
+  geom_bar() +
+  scale_x_discrete(labels = c("0" = "Low infection", "1" = "High infection")) +
+  labs(x = "Infection level", y = "Number of countries", fill = "High infection")
+```
+
+3.  Trends Comparison Between Developing and Developed Countries
+
+In order to gain a better overview of the inequality of vaccine coverage, measles cases, and infection levels between countries with better resources and those that are less well-resourced, graphs have been constructed to facilitate comparison between developing and developed countries.
+
+Here, 5 countries are selected for developing countries. The plot with a line showing the trends of the 3 aspects are plotted with a function. This part is proofread by ChatGPT for a mistype in the code names().
+
+```{r}
+filtered_df_1 <- df %>% filter(country %in% c("Afghanistan", "China", "India", "Nigeria", "Lebanon"))
+
+create_point_plot_1 <- function(i) {
+  filtered_df_1 %>%
+    ggplot(aes_string(x = names(filtered_df_1) [2], y = names(filtered_df_1) [i])) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE, color = "blue") +
+    labs(
+      title = glue ("The trend in {names(df) [i]}"),
+      y = glue("{names(df) [i]}")
+    )
+}
+
+plots_list <- map(3:ncol(filtered_df_1), create_point_plot_1)
+plots_grid <- gridExtra::grid.arrange(grobs = plots_list, ncol = 2)
+```
+
+Similar process has been done for 5 developed countries.
+
+```{r}
+filtered_df_2 <- df %>% filter(country %in% c("United Kingdom", "Canada", "Japan", "France","Australia"))
+
+create_point_plot_2 <- function(i) {
+  filtered_df_2 %>%
+    ggplot(aes_string(x = names(filtered_df_2) [2], y = names(filtered_df_2) [i])) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE, color = "red") +
+    labs(
+      title = glue ("The trend in {names(df) [i]}"),
+      y = glue("{names(df) [i]}")
+    )
+}
+
+plots_list <- map(3:ncol(filtered_df_2), create_point_plot_2)
+plots_grid <- gridExtra::grid.arrange(grobs = plots_list, ncol = 2)
+```
+
+It could be seen from the 2 plots that, for developing countries, the line indicating trends in coverage starts at a lower point and ends at a lower point compared to developed countries. It shows that there is lower coverage due to the differences in resources. Moreover, the gradient of the line for the trend in cases for developed countries is higher than that for developing countries, suggesting that health inequality is created due to inequality in vaccine coverage. Finally, developed countries have lower levels of measles infection.
+
+## Critical Engagement With AI
+
+As previously stated, ChatGPT is used for proofreading and suggesting refinements to the codes. ChatGPT is a valuable tool for proofreading and identifying minor errors in codes, as well as offering constructive suggestions for alternative, more concise and straightforward code formats. ChatGPT enhanced my approach on data visualisation and processing.
+
+However, ChatGPT also makes mistakes while giving suggestions, for example, when suggesting a refinement on my data visualisation initially, it failed to put an argument in print(). Hence, it shows that not all suggestions from ChatGPT is correct, therefore it is important to keep a critical thinking whilst engaging with it.
+
+Overall, ChatGPT does provide useful advice for this report.
