@@ -1,7 +1,8 @@
 ---
 title: "Assignment1_SOCS0100"
-author: NGQM2
+author: "NGQM2"
 format: html
+editor: visual
 ---
 
 ## Introduction
@@ -13,6 +14,27 @@ It is crucial to consider statistics regarding both measles cases and MCV vaccin
 ## Data set Summary
 
 This data set includes yearly statistics in different countries and regions regarding vaccine coverage and disease burden on 5 different vaccines (BCG, HepB3, Pol3, DTP3 and MCV).
+
+```{r}
+data <- read.csv("~/Documents/GitHub/Assignment_1/Vaccine Coverage and Disease Burden - WHO (2017).csv", header = TRUE)
+```
+
+Setups for this projec:
+
+```{r}
+if (!require("pacman")) {
+  install.packages("pacman")
+}
+
+pacman::p_load(
+  tidyverse, 
+  kableExtra,
+  flextable,
+  skimr,
+  glue,
+  palmerpenguins
+  ) 
+```
 
 ## Data Wrangling
 
@@ -103,7 +125,7 @@ create_point_plot_1 <- function(i) {
     geom_smooth(method = "lm", se = TRUE, color = "blue") +
     labs(
       title = glue ("The trend in {names(df) [i]}"),
-      y = glue("{names(df) [i]}")
+      y = glue("{names(df)[i]}")
     )
 }
 
